@@ -16,7 +16,7 @@ BUTTON_MAPPINGS = {
     307: "intervention",
     314: "display_dashboard",
     315: "other",
-    167: "clear_log_history", # Changed button code for clearing logs to 167
+    167: "clear_log_history",
 }
 
 # --- Logging and Dashboard Functions ---
