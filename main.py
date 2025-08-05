@@ -2,6 +2,7 @@
 
 import datetime
 import os
+import subprocess
 from evdev import InputDevice, categorize, ecodes, KeyEvent
 
 # --- Configuration ---
@@ -70,10 +71,39 @@ def clear_action_log():
         print("No log file found to clear.")
     print("-----------------------------------\n")
 
+def start_video_recording():
+    """Starts libcamera-vid recording as a subprocess with a unique filename, suppressing output."""
+    videos_dir = "/home/pattern/videos"
+    if not os.path.exists(videos_dir):
+        os.makedirs(videos_dir)
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    video_filename = f"myvideo_{timestamp}.h264"
+    video_filepath = os.path.join(videos_dir, video_filename)
+
+    # Suppress stdout and stderr from libcamera-vid
+    print(f"Starting video recording to {video_filepath} ...")
+    proc = subprocess.Popen([
+        "libcamera-vid",
+        "-t", "0",
+        "-o", video_filepath
+    ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    return proc
+
+def stop_video_recording(proc):
+    """Stops the libcamera-vid recording subprocess."""
+    if proc is not None:
+        print("Stopping video recording...")
+        proc.terminate()
+        proc.wait()
+        print("Video recording stopped.")
 
 # --- Main Program ---
 def monitor_robot_actions():
+    video_proc = None
     try:
+        # Start video recording
+        video_proc = start_video_recording()
+
         dev = InputDevice(USB_CONTROLLER_DEVICE_PATH)
         print(f"Monitoring: {dev.name} ({dev.path})")
         print("Press keys to log actions | Ctrl+C to stop") 
@@ -101,6 +131,7 @@ def monitor_robot_actions():
     except Exception as e:
         print(f"An unexpected error occurred: {e}")
     finally:
+        stop_video_recording(video_proc)
         print("Exiting robot action logger.")
 
 if __name__ == "__main__":
