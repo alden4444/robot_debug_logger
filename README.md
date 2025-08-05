@@ -3,9 +3,8 @@ Portable action logger for debug
 
 
 **TO RUN:**
-1. Set up virtual env: python3 -m venv venv
-2. Launch venv: source venv/bin/activate
-3. Install depends.txt
+1. Set up virtual env: python3 -m venv venv && source venv/bin/activate
+2. Install depends.txt
 
 
 **UNRESOLVED:**
