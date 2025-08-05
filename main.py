@@ -5,18 +5,19 @@ import os
 from evdev import InputDevice, categorize, ecodes, KeyEvent
 
 # --- Configuration ---
-USB_CONTROLLER_DEVICE_PATH = "/dev/input/event4"
-LOG_FILE_PATH = "/home/pattern/pi/robot_actions.log"
+USB_CONTROLLER_DEVICE_PATH = "/dev/input/event0" # Change this based on output of sudo evtest
+LOG_FILE_PATH = "/home/pattern/debug_logger/robot_actions.log"
 DEBUG_MODE = False
 
 BUTTON_MAPPINGS = {
-    304: "intersection",
-    305: "lane_departure",
-    308: "slow_down",
-    307: "intervention",
-    314: "display_dashboard",
-    315: "other",
-    167: "clear_log_history",
+    2: "intersection",
+    3: "lane_departure",
+    4: "slow_down",
+    5: "intervention",
+    6: "other",
+
+    998: "display_dashboard",
+    999: "clear_log_history",
 }
 
 # --- Logging and Dashboard Functions ---
@@ -74,9 +75,8 @@ def clear_action_log():
 def monitor_robot_actions():
     try:
         dev = InputDevice(USB_CONTROLLER_DEVICE_PATH)
-        print(f"Monitoring Xbox controller: {dev.name} ({dev.path})")
-        # Updated prompt to reflect the new button code for clearing logs
-        print("A, B, X, Y: actions | Select/Back: dashboard | Start: 'other' | Button 167: clear log | Ctrl+C: stop") 
+        print(f"Monitoring: {dev.name} ({dev.path})")
+        print("Press keys to log actions | Ctrl+C to stop") 
 
         for event in dev.read_loop():
             if event.type == ecodes.EV_KEY:
