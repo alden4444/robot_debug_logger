@@ -9,6 +9,5 @@ Portable action logger for debug
 
 
 **UNRESOLVED:**
-  - Find physical layout of buttons on 007 and copy layout
+  - Transfer code to brand new RasPi 4
   - Add PiCam and add start/stop streaming button
-  - Replace gamepad with USB Buttons
