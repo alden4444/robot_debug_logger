@@ -2,7 +2,7 @@
 Portable action logger for debug
 
 
-**TO RUN:**
+***TO RUN:***
 1. Set up virtual env: python3 -m venv venv && source venv/bin/activate
 2. Install depends.txt
 3. Verify /dev/input/event[x] with sudo evtest (install evtest if needed)
