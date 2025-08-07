@@ -5,8 +5,11 @@ Portable action logger for debug
 **TO RUN:**
 1. Set up virtual env: python3 -m venv venv && source venv/bin/activate
 2. Install depends.txt
+3. Verify /dev/input/event[x] with sudo evtest (install evtest if needed)
+4. Verify file paths under USB_KEYBOARD_DEVICE_PATH
+
+Note - set DEBUG_MODE = True to see more information about inputs
 
 
 **UNRESOLVED:**
-  - Transfer code to brand new RasPi 4
-  - Add PiCam and add start/stop streaming button
+- 
