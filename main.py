@@ -6,7 +6,7 @@ import subprocess
 from evdev import InputDevice, categorize, ecodes, KeyEvent
 
 # --- Configuration ---
-USB_CONTROLLER_DEVICE_PATH = "/dev/input/event0" # Change this based on output of sudo evtest
+USB_KEYBOARD_DEVICE_PATH = "/dev/input/event0" # Change this based on output of sudo evtest
 LOG_FILE_PATH = "/home/pattern/alden_debug_logger/robot_actions.log"
 VIDEOS_DIR = "/home/pattern/alden_debug_logger/videos"
 DEBUG_MODE = False
@@ -104,7 +104,7 @@ def monitor_robot_actions():
         # Start video recording
         video_proc = start_video_recording()
 
-        dev = InputDevice(USB_CONTROLLER_DEVICE_PATH)
+        dev = InputDevice(USB_KEYBOARD_DEVICE_PATH)
         print(f"Monitoring: {dev.name} ({dev.path})")
         print("Press keys to log actions | Ctrl+C to stop") 
 
@@ -125,7 +125,7 @@ def monitor_robot_actions():
                         log_action(action_type)
 
     except FileNotFoundError:
-        print(f"Error: Controller not found at {USB_CONTROLLER_DEVICE_PATH}. Check connection and path.")
+        print(f"Error: Controller not found at {USB_KEYBOARD_DEVICE_PATH}. Check connection and path.")
     except PermissionError:
         print("Error: Permission denied. Run with 'sudo'.")
     except Exception as e:
