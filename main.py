@@ -1,14 +1,19 @@
 #!/usr/bin/env python3
 
-import datetime
 import os
+import time
+import datetime
 import subprocess
+import threading
+import requests
 from evdev import InputDevice, categorize, ecodes, KeyEvent
 
 # --- Configuration ---
-USB_KEYBOARD_DEVICE_PATH = "/dev/input/event0" # Change this based on output of sudo evtest
 LOG_FILE_PATH = "/home/pattern/alden_debug_logger/robot_actions.log"
-VIDEOS_DIR = "/home/pattern/alden_debug_logger/videos"
+VIDEO_DIR_PATH = "/home/pattern/videos"
+DATADOG_API_KEY = "055ab7597b8643faa926dcd3a229996f"
+DATADOG_LOG_URL = "https://http-intake.logs.datadoghq.com/api/v2/logs"
+USB_CONTROLLER_DEVICE_PATH = "/dev/input/event0"  # Change based on sudo evtest output
 DEBUG_MODE = False
 
 BUTTON_MAPPINGS = {
@@ -60,7 +65,6 @@ def display_dashboard():
         print(f"Error reading log file {LOG_FILE_PATH}: {e}")
 
 def clear_action_log():
-    """Deletes the action log file."""
     print("\n--- Clearing Action Log History ---")
     if os.path.exists(LOG_FILE_PATH):
         try:
@@ -72,67 +76,128 @@ def clear_action_log():
         print("No log file found to clear.")
     print("-----------------------------------\n")
 
-def start_video_recording():
-    """Starts libcamera-vid recording as a subprocess with a unique filename, suppressing output."""
-    if not os.path.exists(VIDEOS_DIR):
-        os.makedirs(VIDEOS_DIR)
-    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    video_filename = f"debuglogvideo_{timestamp}.h264"
-    video_filepath = os.path.join(VIDEOS_DIR, video_filename)
-
-    # Suppress stdout and stderr from libcamera-vid
-    print(f"Starting video recording to {video_filepath} ...")
-    proc = subprocess.Popen([
-        "libcamera-vid",
-        "-t", "0",
-        "-o", video_filepath
-    ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    return proc
-
-def stop_video_recording(proc):
-    """Stops the libcamera-vid recording subprocess."""
-    if proc is not None:
-        print("Stopping video recording...")
-        proc.terminate()
-        proc.wait()
-        print("Video recording stopped.")
-
-# --- Main Program ---
-def monitor_robot_actions():
-    video_proc = None
+# --- Datadog Upload ---
+def is_wifi_connected():
+    # Check if wlan0 is up and has an IP address
     try:
-        # Start video recording
-        video_proc = start_video_recording()
+        with open('/sys/class/net/wlan0/operstate') as f:
+            if f.read().strip() == 'up':
+                return True
+    except FileNotFoundError:
+        pass
+    return False
 
-        dev = InputDevice(USB_KEYBOARD_DEVICE_PATH)
+def upload_logs_to_datadog():
+    if not is_wifi_connected():
+        print("WiFi not connected, skipping Datadog upload.")
+        return
+    if not os.path.exists(LOG_FILE_PATH):
+        print("No log file to upload.")
+        return
+    with open(LOG_FILE_PATH, "r") as f:
+        log_content = f.read()
+    headers = {
+        "Content-Type": "application/json",
+        "DD-API-KEY": DATADOG_API_KEY
+    }
+    payload = [{"message": log_content, "ddsource": "raspi_robot_logger"}]
+    try:
+        resp = requests.post(DATADOG_LOG_URL, json=payload, headers=headers)
+        print("Datadog upload status:", resp.status_code)
+    except Exception as e:
+        print("Failed to upload logs to Datadog:", e)
+
+def periodic_datadog_uploader(stop_event):
+    # Periodically upload logs to Datadog when WiFi is available
+    while not stop_event.is_set():
+        upload_logs_to_datadog()
+        # upload every 10 minutes
+        for _ in range(60):
+            if stop_event.is_set():
+                break
+            time.sleep(10)
+
+# --- Video Handling ---
+def delete_old_videos():
+    now = time.time()
+    for filename in os.listdir(VIDEO_DIR_PATH):
+        filepath = os.path.join(VIDEO_DIR_PATH, filename)
+        if os.path.isfile(filepath):
+            if now - os.path.getmtime(filepath) > 3 * 24 * 3600:  # older than 3 days
+                print(f"Deleting old video: {filename}")
+                os.remove(filepath)
+
+def video_recorder_loop(stop_event):
+    # Loop: record 5-minute videos until stop_event is set
+    while not stop_event.is_set():
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        video_filename = f"myvideo_{timestamp}.h264"
+        video_filepath = os.path.join(VIDEO_DIR_PATH, video_filename)
+        print(f"Recording video: {video_filename}")
+        proc = subprocess.Popen(
+            ["libcamera-vid", "-t", str(5*60*1000), "-o", video_filepath],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+        )
+        start_time = time.time()
+        while proc.poll() is None:
+            if stop_event.is_set():
+                proc.terminate()
+                break
+            time.sleep(1)
+        delete_old_videos()  # delete old videos at each rotation
+
+# --- Main Action Logger ---
+def monitor_robot_actions(stop_event):
+    try:
+        dev = InputDevice(USB_CONTROLLER_DEVICE_PATH)
         print(f"Monitoring: {dev.name} ({dev.path})")
         print("Press keys to log actions | Ctrl+C to stop") 
 
-        for event in dev.read_loop():
-            if event.type == ecodes.EV_KEY:
-                key_event = categorize(event)
-                if event.code in BUTTON_MAPPINGS and key_event.keystate == KeyEvent.key_down:
-                    action_type = BUTTON_MAPPINGS[event.code]
-                    
-                    if DEBUG_MODE:
-                        print(f"DEBUG: Detected {action_type} (code {event.code})")
-
-                    if action_type == "display_dashboard":
-                        display_dashboard()
-                    elif action_type == "clear_log_history":
-                        clear_action_log()
-                    else:
-                        log_action(action_type)
-
+        while not stop_event.is_set():
+            for event in dev.read_loop():
+                if stop_event.is_set():
+                    break
+                if event.type == ecodes.EV_KEY:
+                    key_event = categorize(event)
+                    if event.code in BUTTON_MAPPINGS and key_event.keystate == KeyEvent.key_down:
+                        action_type = BUTTON_MAPPINGS[event.code]
+                        if DEBUG_MODE:
+                            print(f"DEBUG: Detected {action_type} (code {event.code})")
+                        if action_type == "display_dashboard":
+                            display_dashboard()
+                        elif action_type == "clear_log_history":
+                            clear_action_log()
+                        else:
+                            log_action(action_type)
     except FileNotFoundError:
-        print(f"Error: Controller not found at {USB_KEYBOARD_DEVICE_PATH}. Check connection and path.")
+        print(f"Error: Controller not found at {USB_CONTROLLER_DEVICE_PATH}. Check connection and path.")
     except PermissionError:
         print("Error: Permission denied. Run with 'sudo'.")
     except Exception as e:
         print(f"An unexpected error occurred: {e}")
-    finally:
-        stop_video_recording(video_proc)
-        print("Exiting robot action logger.")
+
+# --- Main Entrypoint ---
+def main():
+    os.makedirs(VIDEO_DIR_PATH, exist_ok=True)
+
+    stop_event = threading.Event()
+
+    # Start video recorder in a thread
+    video_thread = threading.Thread(target=video_recorder_loop, args=(stop_event,))
+    video_thread.start()
+
+    # Start Datadog uploader in a thread
+    datadog_thread = threading.Thread(target=periodic_datadog_uploader, args=(stop_event,))
+    datadog_thread.start()
+
+    # Start robot action logger in main thread
+    try:
+        monitor_robot_actions(stop_event)
+    except KeyboardInterrupt:
+        print("Exiting, stopping threads...")
+        stop_event.set()
+        video_thread.join()
+        datadog_thread.join()
 
 if __name__ == "__main__":
-    monitor_robot_actions()
+    main()
