@@ -7,7 +7,8 @@ from evdev import InputDevice, categorize, ecodes, KeyEvent
 
 # --- Configuration ---
 USB_CONTROLLER_DEVICE_PATH = "/dev/input/event0" # Change this based on output of sudo evtest
-LOG_FILE_PATH = "/home/pattern/debug_logger/robot_actions.log"
+LOG_FILE_PATH = "/home/pattern/alden_debug_logger/robot_actions.log"
+VIDEOS_DIR = "/home/pattern/alden_debug_logger/videos"
 DEBUG_MODE = False
 
 BUTTON_MAPPINGS = {
@@ -17,8 +18,8 @@ BUTTON_MAPPINGS = {
     5: "intervention",
     6: "other",
 
-    998: "display_dashboard",
-    999: "clear_log_history",
+    000: "display_dashboard",
+    000: "clear_log_history",
 }
 
 # --- Logging and Dashboard Functions ---
@@ -73,12 +74,11 @@ def clear_action_log():
 
 def start_video_recording():
     """Starts libcamera-vid recording as a subprocess with a unique filename, suppressing output."""
-    videos_dir = "/home/pattern/videos"
-    if not os.path.exists(videos_dir):
-        os.makedirs(videos_dir)
+    if not os.path.exists(VIDEOS_DIR):
+        os.makedirs(VIDEOS_DIR)
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-    video_filename = f"myvideo_{timestamp}.h264"
-    video_filepath = os.path.join(videos_dir, video_filename)
+    video_filename = f"debuglogvideo_{timestamp}.h264"
+    video_filepath = os.path.join(VIDEOS_DIR, video_filename)
 
     # Suppress stdout and stderr from libcamera-vid
     print(f"Starting video recording to {video_filepath} ...")
