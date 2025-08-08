@@ -1,0 +1,6 @@
+evdev
+opencv-python
+#libcamera-dev
+#libcamera-tools
+#vlc
+dotenv

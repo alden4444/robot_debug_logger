@@ -9,10 +9,12 @@ import requests
 from dotenv import load_dotenv
 from evdev import InputDevice, categorize, ecodes, KeyEvent
 
+
+load_dotenv()
 # --- Configuration ---
 LOG_FILE_PATH = "/home/pattern/alden_debug_logger/robot_actions.log"
 VIDEO_DIR_PATH = "/home/pattern/videos"
-DATADOG_API_KEY = load_dotenv('DATADOG_API_KEY')
+DATADOG_API_KEY = os.getenv('DATADOG_API_KEY')
 DATADOG_LOG_URL = "https://http-intake.logs.datadoghq.com/api/v2/logs"
 USB_CONTROLLER_DEVICE_PATH = "/dev/input/event0"  # Change based on sudo evtest output
 DEBUG_MODE = False

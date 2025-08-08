@@ -1,5 +1,6 @@
 evdev
-cv2
-libcamera-dev libcamera-tools
+opencv-python
+libcamera-dev
+libcamera-tools
 vlc
 dotenv
