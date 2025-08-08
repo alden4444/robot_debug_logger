@@ -2,3 +2,4 @@ evdev
 cv2
 libcamera-dev libcamera-tools
 vlc
+dotenv

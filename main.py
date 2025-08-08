@@ -6,12 +6,13 @@ import datetime
 import subprocess
 import threading
 import requests
+from dotenv import load_dotenv
 from evdev import InputDevice, categorize, ecodes, KeyEvent
 
 # --- Configuration ---
 LOG_FILE_PATH = "/home/pattern/alden_debug_logger/robot_actions.log"
 VIDEO_DIR_PATH = "/home/pattern/videos"
-DATADOG_API_KEY = "055ab7597b8643faa926dcd3a229996f"
+DATADOG_API_KEY = load_dotenv('DATADOG_API_KEY')
 DATADOG_LOG_URL = "https://http-intake.logs.datadoghq.com/api/v2/logs"
 USB_CONTROLLER_DEVICE_PATH = "/dev/input/event0"  # Change based on sudo evtest output
 DEBUG_MODE = False
